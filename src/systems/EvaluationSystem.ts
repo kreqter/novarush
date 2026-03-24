@@ -1,4 +1,5 @@
 import { System, World, Query } from '../ecs';
+import { getSession } from '../ecs/session';
 import { GameSession } from '../components/GameSession';
 import { SpinResult } from '../components/SpinResult';
 import { GameState, type WinLine } from '../types/game';
@@ -17,14 +18,13 @@ export class EvaluationSystem extends System {
   }
 
   update(_dt: number) {
-    if (this._sessionQuery.entities.size === 0) return;
-    const sessionEntity = this._sessionQuery.entities.values().next().value!;
-    const session = this.world.getComponent(sessionEntity, GameSession);
+    const s = getSession(this.world, this._sessionQuery);
+    if (!s) return;
 
-    if (session.state !== GameState.Evaluating) return;
+    if (s.session.state !== GameState.Evaluating) return;
 
-    if (!this.world.hasComponent(sessionEntity, SpinResult)) return;
-    const result = this.world.getComponent(sessionEntity, SpinResult);
+    if (!this.world.hasComponent(s.entity, SpinResult)) return;
+    const result = this.world.getComponent(s.entity, SpinResult);
     if (result.grid.length === 0) return;
 
     const winLines: WinLine[] = [];
@@ -51,7 +51,7 @@ export class EvaluationSystem extends System {
       if (matchCount >= 3) {
         const baseMul = PAYTABLE[matchCount] || 0;
         const symMul = SYMBOL_CONFIGS[firstSymbol as SymbolType]?.multiplier || 1;
-        const payout = session.bet * baseMul * symMul;
+        const payout = s.session.bet * baseMul * symMul;
 
         winLines.push({
           lineIndex: lineIdx,
@@ -68,6 +68,6 @@ export class EvaluationSystem extends System {
     result.winLines = winLines;
     result.totalWin = totalWin;
 
-    session.state = GameState.PayingOut;
+    s.session.state = GameState.PayingOut;
   }
 }

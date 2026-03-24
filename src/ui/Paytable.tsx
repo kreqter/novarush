@@ -1,17 +1,33 @@
 import {
-  Box, Text, Table, Thead, Tbody, Tr, Th, Td,
-  Popover, PopoverTrigger, PopoverContent, PopoverBody,
+  Box,
+  Text,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverBody,
   IconButton,
 } from '@chakra-ui/react';
 import { useGameStore } from '../store/gameStore';
 import { GameState } from '../types/game';
 import { SYMBOL_CONFIGS } from '../config/symbols';
 import { PAYTABLE } from '../config/paytable';
+import { GAME_CONFIG } from '../config/game';
 import { SymbolType } from '../types/symbols';
 
 const symbolOrder: SymbolType[] = [
-  SymbolType.Bar, SymbolType.Seven, SymbolType.Watermelon,
-  SymbolType.Plum, SymbolType.Orange, SymbolType.Lemon, SymbolType.Cherry,
+  SymbolType.Bar,
+  SymbolType.Seven,
+  SymbolType.Watermelon,
+  SymbolType.Plum,
+  SymbolType.Orange,
+  SymbolType.Lemon,
+  SymbolType.Cherry,
 ];
 
 const SYMBOL_EMOJI: Partial<Record<SymbolType, string>> = {
@@ -59,10 +75,18 @@ export function Paytable() {
             <Table size="sm" variant="unstyled">
               <Thead>
                 <Tr>
-                  <Th color="gray.500" fontSize="xs">Symbol</Th>
-                  <Th color="gray.500" fontSize="xs" isNumeric>x3</Th>
-                  <Th color="gray.500" fontSize="xs" isNumeric>x4</Th>
-                  <Th color="gray.500" fontSize="xs" isNumeric>x5</Th>
+                  <Th color="gray.500" fontSize="xs">
+                    Symbol
+                  </Th>
+                  <Th color="gray.500" fontSize="xs" isNumeric>
+                    x3
+                  </Th>
+                  <Th color="gray.500" fontSize="xs" isNumeric>
+                    x4
+                  </Th>
+                  <Th color="gray.500" fontSize="xs" isNumeric>
+                    x5
+                  </Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -72,13 +96,16 @@ export function Paytable() {
                     <Tr key={type}>
                       <Td>
                         <Text fontSize="sm" color="white">
-                          {SYMBOL_EMOJI[type]} <Text as="span" textTransform="capitalize">{type}</Text>
+                          {SYMBOL_EMOJI[type]}{' '}
+                          <Text as="span" textTransform="capitalize">
+                            {type}
+                          </Text>
                         </Text>
                       </Td>
                       {[3, 4, 5].map((count) => (
                         <Td key={count} isNumeric>
                           <Text fontSize="xs" color="yellow.300">
-                            {10 * PAYTABLE[count] * config.multiplier}
+                            {GAME_CONFIG.BET_AMOUNT * PAYTABLE[count] * config.multiplier}
                           </Text>
                         </Td>
                       ))}
@@ -88,7 +115,7 @@ export function Paytable() {
               </Tbody>
             </Table>
             <Text fontSize="xs" color="gray.500" mt={2} textAlign="center">
-              Bet: 10 | 5 paylines
+              Bet: {GAME_CONFIG.BET_AMOUNT} | {GAME_CONFIG.REELS_COUNT} paylines
             </Text>
           </PopoverBody>
         </PopoverContent>

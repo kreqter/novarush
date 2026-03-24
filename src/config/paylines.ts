@@ -6,10 +6,4 @@ export const PAYLINES: number[][] = [
   [2, 1, 0, 1, 2],
 ];
 
-export const PAYLINE_COLORS: number[] = [
-  0xff0000,
-  0x00ff00,
-  0x0000ff,
-  0xffd700,
-  0xff00ff,
-];
+export const PAYLINE_COLORS: number[] = [0xff0000, 0x00ff00, 0x0000ff, 0xffd700, 0xff00ff];

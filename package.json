@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint src",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src"
   },
   "dependencies": {
     "@chakra-ui/react": "^2.8.2",
     "@emotion/react": "^11.13.0",
     "@emotion/styled": "^11.13.0",
+    "@esotericsoftware/spine-pixi-v8": "4.2",
     "@releaseband/ecs": "^3.0.4",
     "framer-motion": "^11.3.0",
     "pixi.js": "^8.4.0",
@@ -22,7 +26,13 @@
   "devDependencies": {
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "@typescript-eslint/parser": "^8.57.2",
     "@vitejs/plugin-react": "^4.3.1",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "prettier": "^3.8.1",
     "typescript": "^5.5.3",
     "vite": "^5.4.0"
   }

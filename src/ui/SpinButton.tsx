@@ -3,13 +3,14 @@ import { Box, Flex, Text } from '@chakra-ui/react';
 import { useGameStore } from '../store/gameStore';
 import { GameState } from '../types/game';
 import { SoundManager } from '../pixi/SoundManager';
+import { GAME_CONFIG } from '../config/game';
 import { TurboToggle } from './TurboToggle';
 import { AutoPlayPanel } from './AutoPlayPanel';
 
 function useIsMobileLandscape() {
   const isTouchDevice = navigator.maxTouchPoints > 0;
   const [mobileLandscape, setMobileLandscape] = useState(
-    isTouchDevice && window.innerWidth > window.innerHeight
+    isTouchDevice && window.innerWidth > window.innerHeight,
   );
   useEffect(() => {
     const onResize = () => {
@@ -17,7 +18,7 @@ function useIsMobileLandscape() {
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, []);
+  }, [isTouchDevice]);
   return mobileLandscape;
 }
 
@@ -33,11 +34,11 @@ export function SpinButton() {
 
   const isSpinning = gameState === GameState.Spinning;
   const isIdle = gameState === GameState.Idle;
-  const canSpin = isIdle && balance >= 10;
+  const canSpin = isIdle && balance >= GAME_CONFIG.BET_AMOUNT;
   const isAutoPlaying = autoPlayRemaining > 0;
 
   const handleClick = () => {
-    SoundManager.play('click', 0.5);
+    SoundManager.play('click', GAME_CONFIG.SOUND_VOLUME_CLICK);
     if (isSpinning) {
       requestSkip();
     } else if (canSpin && !isAutoPlaying) {
@@ -49,7 +50,7 @@ export function SpinButton() {
     const doSpin = () => {
       const s = useGameStore.getState();
       const idle = s.gameState === GameState.Idle;
-      const hasBalance = s.balance >= 10;
+      const hasBalance = s.balance >= GAME_CONFIG.BET_AMOUNT;
       if (idle && hasBalance) {
         useGameStore.getState().requestSpin();
       } else if (s.gameState === GameState.Spinning) {
@@ -64,7 +65,7 @@ export function SpinButton() {
       e.preventDefault();
       spaceHeld.current = true;
       doSpin();
-      spaceInterval.current = setInterval(doSpin, 200);
+      spaceInterval.current = setInterval(doSpin, GAME_CONFIG.KEY_REPEAT_INTERVAL);
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
@@ -108,7 +109,7 @@ export function SpinButton() {
 
   const spinSize = isMobileLandscape ? '80px' : '120px';
   const sideSize = isMobileLandscape ? '40px' : '50px';
-  const spinFontSize = isAutoPlaying ? 'xs' : (isMobileLandscape ? 'md' : 'lg');
+  const spinFontSize = isAutoPlaying ? 'xs' : isMobileLandscape ? 'md' : 'lg';
 
   if (isMobileLandscape) {
     return (
@@ -148,7 +149,12 @@ export function SpinButton() {
           }}
           _active={{ transform: 'scale(0.95)' }}
         >
-          <Text fontSize={spinFontSize} fontFamily="'Orbitron', sans-serif" fontWeight="800" letterSpacing="wider">
+          <Text
+            fontSize={spinFontSize}
+            fontFamily="'Orbitron', sans-serif"
+            fontWeight="800"
+            letterSpacing="wider"
+          >
             {label}
           </Text>
         </Box>
@@ -196,7 +202,12 @@ export function SpinButton() {
         }}
         _active={{ transform: 'scale(0.95)' }}
       >
-        <Text fontSize={spinFontSize} fontFamily="'Orbitron', sans-serif" fontWeight="800" letterSpacing="wider">
+        <Text
+          fontSize={spinFontSize}
+          fontFamily="'Orbitron', sans-serif"
+          fontWeight="800"
+          letterSpacing="wider"
+        >
           {label}
         </Text>
       </Box>

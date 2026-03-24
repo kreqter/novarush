@@ -19,10 +19,3 @@ export interface WinLine {
   payout: number;
   positions: [number, number][];
 }
-
-export enum AnimationType {
-  Spin = 'spin',
-  Stop = 'stop',
-  Bounce = 'bounce',
-  Win = 'win',
-}

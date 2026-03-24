@@ -1,3 +1,5 @@
+import { GAME_CONFIG } from '../config/game';
+
 class SoundManagerClass {
   private _sounds: Map<string, HTMLAudioElement> = new Map();
   private _pools: Map<string, HTMLAudioElement[]> = new Map();
@@ -27,9 +29,9 @@ class SoundManagerClass {
     if (!source) return;
 
     const pool = this._pools.get(name)!;
-    let audio = pool.find(a => a.ended || a.paused);
+    let audio = pool.find((a) => a.ended || a.paused);
     if (!audio) {
-      if (pool.length >= 4) return;
+      if (pool.length >= GAME_CONFIG.SOUND_POOL_MAX) return;
       audio = source.cloneNode(true) as HTMLAudioElement;
       pool.push(audio);
     }
@@ -44,7 +46,7 @@ class SoundManagerClass {
     if (!audio) return;
     this._bgMusic = audio;
     this._bgMusic.loop = true;
-    this._bgMusic.volume = 0.3;
+    this._bgMusic.volume = GAME_CONFIG.SOUND_VOLUME_BG;
     this._bgMusic.play().catch(() => {});
   }
 
@@ -59,7 +61,7 @@ class SoundManagerClass {
   setMuted(muted: boolean) {
     this._muted = muted;
     if (this._bgMusic) {
-      this._bgMusic.volume = muted ? 0 : 0.3;
+      this._bgMusic.volume = muted ? 0 : GAME_CONFIG.SOUND_VOLUME_BG;
     }
   }
 }

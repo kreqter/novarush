@@ -1,4 +1,5 @@
 import { System, World, Query } from '../ecs';
+import { getSession } from '../ecs/session';
 import { Reel } from '../components/Reel';
 import { GameSession } from '../components/GameSession';
 import { SpinResult } from '../components/SpinResult';
@@ -34,9 +35,38 @@ export class RenderSystem extends System {
     this._reelQuery = world.createQuery([Reel]);
   }
 
+  update(dt: number) {
+    if (!this._initialized) this._init();
+
+    const { winMask, showingWin } = this._computeWinMask();
+
+    if (showingWin) {
+      this._winTime += dt;
+    } else {
+      this._winTime = 0;
+    }
+
+    const pulseScale = showingWin
+      ? 1 + GAME_CONFIG.WIN_PULSE_AMPLITUDE * Math.sin(this._winTime * GAME_CONFIG.WIN_PULSE_SPEED)
+      : 1;
+
+    this._updateReelSprites(winMask, showingWin, pulseScale);
+    this._drawWinLines(showingWin, winMask);
+  }
+
   private _init() {
     const stage = this._app.stage;
+    this._initBackground(stage);
+    this._initLogo(stage);
+    this._initReels(stage);
 
+    this._winLinesGraphics = new Graphics();
+    stage.addChild(this._winLinesGraphics);
+
+    this._initialized = true;
+  }
+
+  private _initBackground(stage: Container) {
     const bgTex = getBgTexture();
     if (bgTex) {
       const bg = new Sprite(bgTex);
@@ -46,21 +76,25 @@ export class RenderSystem extends System {
     } else {
       const bg = new Graphics();
       bg.rect(0, 0, GAME_CONFIG.GAME_WIDTH, GAME_CONFIG.GAME_HEIGHT);
-      bg.fill(0x0a0a2e);
+      bg.fill(GAME_CONFIG.FALLBACK_BG_COLOR);
       stage.addChild(bg);
     }
+  }
 
+  private _initLogo(stage: Container) {
     const logoTex = getLogoTexture();
-    if (logoTex) {
-      const logo = new Sprite(logoTex);
-      logo.anchor.set(0.5, 0);
-      logo.x = GAME_CONFIG.GAME_WIDTH / 2;
-      logo.y = 5;
-      logo.scale.set(0.4);
-      logo.blendMode = 'add';
-      stage.addChild(logo);
-    }
+    if (!logoTex) return;
 
+    const logo = new Sprite(logoTex);
+    logo.anchor.set(0.5, 0);
+    logo.x = GAME_CONFIG.GAME_WIDTH / 2;
+    logo.y = GAME_CONFIG.LOGO_Y;
+    logo.scale.set(GAME_CONFIG.LOGO_SCALE);
+    logo.blendMode = 'add';
+    stage.addChild(logo);
+  }
+
+  private _initReels(stage: Container) {
     const fp = GAME_CONFIG.FRAME_PADDING;
 
     const reelsContainer = new Container();
@@ -75,32 +109,31 @@ export class RenderSystem extends System {
     reelsContainer.mask = mask;
 
     for (let r = 0; r < GAME_CONFIG.REELS_COUNT; r++) {
-      const reelContainer = new Container();
-      reelContainer.x = r * GAME_CONFIG.REEL_WIDTH;
-      reelsContainer.addChild(reelContainer);
+      this._reelViews.push(this._createReelView(reelsContainer, r));
+    }
+  }
 
-      const sprites: Sprite[] = [];
-      for (let i = 0; i < 4; i++) {
-        const sprite = this._makeSymbolSprite(SymbolType.Cherry);
-        sprite.x = GAME_CONFIG.REEL_WIDTH / 2;
-        sprite.y = (i - 1) * CELL_HEIGHT + GAME_CONFIG.SYMBOL_SIZE / 2;
-        sprite.anchor.set(0.5);
-        reelContainer.addChild(sprite);
-        sprites.push(sprite);
-      }
+  private _createReelView(parent: Container, reelIndex: number): ReelView {
+    const reelContainer = new Container();
+    reelContainer.x = reelIndex * GAME_CONFIG.REEL_WIDTH;
+    parent.addChild(reelContainer);
 
-      this._reelViews.push({
-        container: reelContainer,
-        sprites,
-        cachedSymbols: [null, null, null, null],
-        baseScales: [[1,1],[1,1],[1,1],[1,1]],
-      });
+    const sprites: Sprite[] = [];
+    const cachedSymbols: (SymbolType | null)[] = [];
+    const baseScales: [number, number][] = [];
+
+    for (let i = 0; i < GAME_CONFIG.SPRITES_PER_REEL; i++) {
+      const sprite = this._makeSymbolSprite(SymbolType.Cherry);
+      sprite.x = GAME_CONFIG.REEL_WIDTH / 2;
+      sprite.y = (i - 1) * CELL_HEIGHT + GAME_CONFIG.SYMBOL_SIZE / 2;
+      sprite.anchor.set(0.5);
+      reelContainer.addChild(sprite);
+      sprites.push(sprite);
+      cachedSymbols.push(null);
+      baseScales.push([1, 1]);
     }
 
-    this._winLinesGraphics = new Graphics();
-    stage.addChild(this._winLinesGraphics);
-
-    this._initialized = true;
+    return { container: reelContainer, sprites, cachedSymbols, baseScales };
   }
 
   private _makeSymbolSprite(type: SymbolType): Sprite {
@@ -113,7 +146,13 @@ export class RenderSystem extends System {
       return s;
     }
     const g = new Graphics();
-    g.roundRect(0, 0, GAME_CONFIG.SYMBOL_SIZE, GAME_CONFIG.SYMBOL_SIZE, 8);
+    g.roundRect(
+      0,
+      0,
+      GAME_CONFIG.SYMBOL_SIZE,
+      GAME_CONFIG.SYMBOL_SIZE,
+      GAME_CONFIG.SYMBOL_BORDER_RADIUS,
+    );
     g.fill(this._symColor(type));
     const t = this._app.renderer.generateTexture(g);
     return new Sprite(t);
@@ -138,41 +177,43 @@ export class RenderSystem extends System {
 
   private _symColor(type: SymbolType): number {
     const c: Record<string, number> = {
-      cherry: 0xff2244, lemon: 0xffee00, orange: 0xff8800,
-      plum: 0x8844cc, watermelon: 0x22cc44, seven: 0xff0000, bar: 0xdddddd,
+      cherry: 0xff2244,
+      lemon: 0xffee00,
+      orange: 0xff8800,
+      plum: 0x8844cc,
+      watermelon: 0x22cc44,
+      seven: 0xff0000,
+      bar: 0xdddddd,
     };
     return c[type] ?? 0xffffff;
   }
 
-  update(dt: number) {
-    if (!this._initialized) this._init();
-
+  private _computeWinMask(): { winMask: number; showingWin: boolean } {
     let winMask = 0;
     let showingWin = false;
-    if (this._sessionQuery.entities.size > 0) {
-      const se = this._sessionQuery.entities.values().next().value!;
-      const session = this.world.getComponent(se, GameSession);
-      if ((session.state === GameState.WinDisplay || session.state === GameState.Idle) &&
-          this.world.hasComponent(se, SpinResult)) {
-        const result = this.world.getComponent(se, SpinResult);
-        if (result.winLines.length > 0) {
-          showingWin = true;
-          for (const wl of result.winLines) {
-            for (const [r, row] of wl.positions) {
-              winMask |= (1 << (r * 3 + row));
-            }
-          }
-        }
+
+    const s = getSession(this.world, this._sessionQuery);
+    if (!s) return { winMask, showingWin };
+
+    const isWinState =
+      s.session.state === GameState.WinDisplay || s.session.state === GameState.Idle;
+    if (!isWinState || !this.world.hasComponent(s.entity, SpinResult))
+      return { winMask, showingWin };
+
+    const result = this.world.getComponent(s.entity, SpinResult);
+    if (result.winLines.length === 0) return { winMask, showingWin };
+
+    showingWin = true;
+    for (const wl of result.winLines) {
+      for (const [r, row] of wl.positions) {
+        winMask |= 1 << (r * GAME_CONFIG.ROWS_COUNT + row);
       }
     }
 
-    if (showingWin) {
-      this._winTime += dt;
-    } else {
-      this._winTime = 0;
-    }
-    const pulseScale = showingWin ? 1 + 0.08 * Math.sin(this._winTime * 0.005) : 1;
+    return { winMask, showingWin };
+  }
 
+  private _updateReelSprites(winMask: number, showingWin: boolean, pulseScale: number) {
     for (const re of this._reelQuery.entities) {
       const reel = this.world.getComponent(re, Reel);
       const view = this._reelViews[reel.reelIndex];
@@ -182,60 +223,92 @@ export class RenderSystem extends System {
         const sprite = view.sprites[i];
         const row = i - 1;
         const sym = reel.currentStrip[i];
-        const isWinning = row >= 0 && (winMask & (1 << (reel.reelIndex * 3 + row))) !== 0;
 
         const changed = view.cachedSymbols[i] !== sym;
         if (changed) view.cachedSymbols[i] = sym;
 
-        if (sym === SymbolType.BarTallTop) {
-          if (changed) {
-            const tallTex = getSymbolTexture('bar_tall.png');
-            if (tallTex) {
-              sprite.texture = tallTex;
-              const tallHeight = CELL_HEIGHT * 2 - GAME_CONFIG.SYMBOL_GAP;
-              sprite.width = GAME_CONFIG.REEL_WIDTH;
-              sprite.height = tallHeight;
-              view.baseScales[i] = [sprite.scale.x, sprite.scale.y];
-            }
-          }
-          sprite.y = (row + 0.5) * CELL_HEIGHT + GAME_CONFIG.SYMBOL_SIZE / 2 + reel.scrollY;
-          sprite.visible = true;
-        } else if (sym === SymbolType.BarTallBottom) {
-          sprite.y = (i - 1) * CELL_HEIGHT + GAME_CONFIG.SYMBOL_SIZE / 2 + reel.scrollY;
-          sprite.visible = false;
-        } else {
-          if (changed) {
-            this._setSymbolTexture(sprite, sym);
-            view.baseScales[i] = [sprite.scale.x, sprite.scale.y];
-          }
-          sprite.y = (i - 1) * CELL_HEIGHT + GAME_CONFIG.SYMBOL_SIZE / 2 + reel.scrollY;
-          sprite.visible = true;
-        }
-
-        if (isWinning && showingWin) {
-          const [bx, by] = view.baseScales[i];
-          sprite.scale.set(bx * pulseScale, by * pulseScale);
-        } else if (view.baseScales[i][0] !== 0) {
-          sprite.scale.set(view.baseScales[i][0], view.baseScales[i][1]);
-        }
+        this._updateSymbolSprite(sprite, view, i, row, sym, changed, reel.scrollY);
+        this._applyWinPulse(sprite, view, i, row, winMask, showingWin, pulseScale);
       }
     }
-
-    const winLinesCount = showingWin ? winMask : 0;
-    this._drawWinLines(showingWin, winLinesCount);
   }
 
-  private _drawWinLines(showingWin: boolean, winLinesCount: number) {
+  private _updateSymbolSprite(
+    sprite: Sprite,
+    view: ReelView,
+    i: number,
+    row: number,
+    sym: SymbolType,
+    changed: boolean,
+    scrollY: number,
+  ) {
+    if (sym === SymbolType.BarTallTop) {
+      if (changed) {
+        const tallTex = getSymbolTexture('bar_tall.png');
+        if (tallTex) {
+          sprite.texture = tallTex;
+          const tallHeight = CELL_HEIGHT * GAME_CONFIG.TALL_SYMBOL_ROWS - GAME_CONFIG.SYMBOL_GAP;
+          sprite.width = GAME_CONFIG.REEL_WIDTH;
+          sprite.height = tallHeight;
+          view.baseScales[i] = [sprite.scale.x, sprite.scale.y];
+        }
+      }
+      sprite.y = (row + 0.5) * CELL_HEIGHT + GAME_CONFIG.SYMBOL_SIZE / 2 + scrollY;
+      sprite.visible = true;
+    } else if (sym === SymbolType.BarTallBottom) {
+      sprite.y = row * CELL_HEIGHT + GAME_CONFIG.SYMBOL_SIZE / 2 + scrollY;
+      sprite.visible = false;
+    } else {
+      if (changed) {
+        this._setSymbolTexture(sprite, sym);
+        view.baseScales[i] = [sprite.scale.x, sprite.scale.y];
+      }
+      sprite.y = row * CELL_HEIGHT + GAME_CONFIG.SYMBOL_SIZE / 2 + scrollY;
+      sprite.visible = true;
+    }
+  }
+
+  private _applyWinPulse(
+    sprite: Sprite,
+    view: ReelView,
+    i: number,
+    row: number,
+    winMask: number,
+    showingWin: boolean,
+    pulseScale: number,
+  ) {
+    const isWinning =
+      row >= 0 &&
+      (winMask &
+        (1 <<
+          (view.sprites.indexOf(sprite) > -1
+            ? this._getReelIndexForView(view) * GAME_CONFIG.ROWS_COUNT + row
+            : 0))) !==
+        0;
+
+    if (isWinning && showingWin) {
+      const [bx, by] = view.baseScales[i];
+      sprite.scale.set(bx * pulseScale, by * pulseScale);
+    } else if (view.baseScales[i][0] !== 0) {
+      sprite.scale.set(view.baseScales[i][0], view.baseScales[i][1]);
+    }
+  }
+
+  private _getReelIndexForView(view: ReelView): number {
+    return this._reelViews.indexOf(view);
+  }
+
+  private _drawWinLines(showingWin: boolean, winMask: number) {
+    const winLinesCount = showingWin ? winMask : 0;
     if (this._lastWinLinesDrawn === winLinesCount) return;
     this._lastWinLinesDrawn = winLinesCount;
 
     this._winLinesGraphics.clear();
     if (!showingWin || winLinesCount === 0) return;
 
-    if (this._sessionQuery.entities.size === 0) return;
-    const se = this._sessionQuery.entities.values().next().value!;
-    if (!this.world.hasComponent(se, SpinResult)) return;
-    const result = this.world.getComponent(se, SpinResult);
+    const s = getSession(this.world, this._sessionQuery);
+    if (!s || !this.world.hasComponent(s.entity, SpinResult)) return;
+    const result = this.world.getComponent(s.entity, SpinResult);
 
     for (const wl of result.winLines) {
       const color = PAYLINE_COLORS[wl.lineIndex] ?? 0xffffff;
@@ -250,7 +323,11 @@ export class RenderSystem extends System {
 
         this._winLinesGraphics.moveTo(x1, y1);
         this._winLinesGraphics.lineTo(x2, y2);
-        this._winLinesGraphics.stroke({ color, width: 4, alpha: 0.9 });
+        this._winLinesGraphics.stroke({
+          color,
+          width: GAME_CONFIG.WIN_LINE_WIDTH,
+          alpha: GAME_CONFIG.WIN_LINE_ALPHA,
+        });
       }
     }
   }

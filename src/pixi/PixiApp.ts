@@ -7,7 +7,7 @@ export async function initPixiApp(container: HTMLElement): Promise<Application> 
   await app.init({
     width: GAME_CONFIG.GAME_WIDTH,
     height: GAME_CONFIG.GAME_HEIGHT,
-    backgroundColor: 0x040e2e,
+    backgroundColor: GAME_CONFIG.BG_COLOR,
     resolution: window.devicePixelRatio || 1,
     autoDensity: true,
     antialias: true,
@@ -28,8 +28,7 @@ function handleResize(app: Application) {
   let scale: number;
 
   if (isPortrait) {
-    const padding = 12;
-    scale = (w - padding * 2) / GAME_CONFIG.FRAME_W;
+    scale = (w - GAME_CONFIG.PORTRAIT_PADDING * 2) / GAME_CONFIG.FRAME_W;
   } else {
     scale = Math.min(w / GAME_CONFIG.GAME_WIDTH, h / GAME_CONFIG.GAME_HEIGHT);
   }
@@ -44,7 +43,7 @@ function handleResize(app: Application) {
   canvas.style.left = `${(w - canvasW) / 2}px`;
 
   if (isPortrait) {
-    const topOffset = Math.max(0, (h - canvasH) * 0.3);
+    const topOffset = Math.max(0, (h - canvasH) * GAME_CONFIG.PORTRAIT_TOP_OFFSET_RATIO);
     canvas.style.top = `${topOffset}px`;
   } else {
     canvas.style.top = `${(h - canvasH) / 2}px`;

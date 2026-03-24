@@ -10,8 +10,10 @@ export class Reel {
   bounceTimer: number = 0;
   targetSymbols: SymbolType[] = [];
   currentStrip: SymbolType[] = [
-    SymbolType.Cherry, SymbolType.Cherry,
-    SymbolType.Cherry, SymbolType.Cherry,
+    SymbolType.Cherry,
+    SymbolType.Cherry,
+    SymbolType.Cherry,
+    SymbolType.Cherry,
   ];
   targetQueue: SymbolType[] = [];
 }

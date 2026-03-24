@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { GAME_CONFIG } from '../config/game';
 import { GameState, type WinLine } from '../types/game';
 import type { SymbolType } from '../types/symbols';
 
@@ -28,7 +29,7 @@ export interface GameStore {
 }
 
 export const useGameStore = create<GameStore>((set) => ({
-  balance: 1000,
+  balance: GAME_CONFIG.INITIAL_BALANCE,
   playerName: '',
   gameState: GameState.Init,
   lastWin: 0,

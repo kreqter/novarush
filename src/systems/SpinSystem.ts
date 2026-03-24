@@ -1,13 +1,14 @@
 import { System, World, Query } from '../ecs';
+import { getSession } from '../ecs/session';
 import { GameSession } from '../components/GameSession';
 import { SpinResult } from '../components/SpinResult';
 import { Reel } from '../components/Reel';
+import { TurboMode } from '../components/TurboMode';
+import { SpinCommand } from '../components/InputCommands';
 import { GameState } from '../types/game';
 import { GAME_CONFIG } from '../config/game';
-import { useGameStore } from '../store/gameStore';
 
 export class SpinSystem extends System {
-  private _gameSessionEntity: number = -1;
   private _sessionQuery: Query;
   private _reelQuery: Query;
 
@@ -18,53 +19,40 @@ export class SpinSystem extends System {
   }
 
   update(_dt: number) {
-    const store = useGameStore.getState();
+    const s = getSession(this.world, this._sessionQuery);
+    if (!s) return;
 
-    if (store.playerNameSet) {
-      const name = store.playerNameSet;
-      useGameStore.setState({ playerNameSet: null });
+    const cmd = this.world.getComponent(s.entity, SpinCommand);
+    if (!cmd.active) return;
+    cmd.active = false;
 
-      if (this._sessionQuery.entities.size > 0) {
-        this._gameSessionEntity = this._sessionQuery.entities.values().next().value!;
-        const session = this.world.getComponent(this._gameSessionEntity, GameSession);
-        session.playerName = name;
-        session.state = GameState.Idle;
-      }
-    }
+    if (s.session.state !== GameState.Idle) return;
+    if (s.session.balance < s.session.bet) return;
 
-    if (!store.spinRequested) return;
-    useGameStore.setState({ spinRequested: false });
+    s.session.balance -= s.session.bet;
+    s.session.state = GameState.Spinning;
 
-    if (this._gameSessionEntity < 0) {
-      if (this._sessionQuery.entities.size === 0) return;
-      this._gameSessionEntity = this._sessionQuery.entities.values().next().value!;
-    }
-
-    const session = this.world.getComponent(this._gameSessionEntity, GameSession);
-    if (session.state !== GameState.Idle) return;
-    if (session.balance < session.bet) return;
-
-    session.balance -= session.bet;
-    session.state = GameState.Spinning;
-
-    if (this.world.hasComponent(this._gameSessionEntity, SpinResult)) {
-      const result = this.world.getComponent(this._gameSessionEntity, SpinResult);
+    if (this.world.hasComponent(s.entity, SpinResult)) {
+      const result = this.world.getComponent(s.entity, SpinResult);
       result.grid = [];
       result.winLines = [];
       result.totalWin = 0;
       result.processed = false;
     }
 
-    this.world.addTag(this._gameSessionEntity, 'SPIN_REQUESTED');
+    this.world.addTag(s.entity, 'SPIN_REQUESTED');
+
+    const turbo = this.world.getComponent(s.entity, TurboMode);
+    const turboMultiplier = turbo.active ? GAME_CONFIG.TURBO_MULTIPLIER : 1;
 
     for (const re of this._reelQuery.entities) {
       const reel = this.world.getComponent(re, Reel);
-      const turboMultiplier = store.turboActive ? GAME_CONFIG.TURBO_MULTIPLIER : 1;
       reel.state = 'spinning';
       reel.spinSpeed = GAME_CONFIG.SPIN_SPEED * turboMultiplier;
       reel.scrollY = 0;
       reel.bounceTimer = 0;
-      reel.stopTimer = GAME_CONFIG.REEL_STOP_BASE_DELAY + reel.reelIndex * GAME_CONFIG.REEL_STOP_INCREMENT;
+      reel.stopTimer =
+        GAME_CONFIG.REEL_STOP_BASE_DELAY + reel.reelIndex * GAME_CONFIG.REEL_STOP_INCREMENT;
       reel.stopTimer /= turboMultiplier;
     }
   }

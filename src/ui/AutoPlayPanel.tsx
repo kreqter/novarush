@@ -1,6 +1,12 @@
 import {
-  Box, Button, Popover, PopoverTrigger, PopoverContent,
-  PopoverBody, HStack, Text,
+  Box,
+  Button,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverBody,
+  HStack,
+  Text,
 } from '@chakra-ui/react';
 import { useGameStore } from '../store/gameStore';
 import { GameState } from '../types/game';
@@ -47,8 +53,16 @@ export function AutoPlayPanel({ size = '50px' }: { size?: string }) {
         _hover={{ bg: 'red.500', transform: 'scale(1.1)' }}
         pointerEvents="auto"
       >
-        <Text fontSize="9px" fontFamily="'Orbitron', sans-serif" fontWeight="700" lineHeight="1.1" textAlign="center">
-          STOP<br/>{autoPlayRemaining}
+        <Text
+          fontSize="9px"
+          fontFamily="'Orbitron', sans-serif"
+          fontWeight="700"
+          lineHeight="1.1"
+          textAlign="center"
+        >
+          STOP
+          <br />
+          {autoPlayRemaining}
         </Text>
       </Box>
     );

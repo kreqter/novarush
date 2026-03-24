@@ -1,8 +1,10 @@
 import { System, World, Query } from '../ecs';
+import { getSession } from '../ecs/session';
 import { GameSession } from '../components/GameSession';
 import { Reel } from '../components/Reel';
 import { SpinResult } from '../components/SpinResult';
 import { GameState } from '../types/game';
+import { GAME_CONFIG } from '../config/game';
 import { SoundManager } from '../pixi/SoundManager';
 
 export class SoundSystem extends System {
@@ -18,33 +20,32 @@ export class SoundSystem extends System {
   }
 
   update(_dt: number) {
-    if (this._sessionQuery.entities.size === 0) return;
-    const sessionEntity = this._sessionQuery.entities.values().next().value!;
-    const session = this.world.getComponent(sessionEntity, GameSession);
+    const s = getSession(this.world, this._sessionQuery);
+    if (!s) return;
 
-    if (!this._bgMusicStarted && session.state === GameState.Idle) {
+    if (!this._bgMusicStarted && s.session.state === GameState.Idle) {
       this._bgMusicStarted = true;
       SoundManager.startBgMusic();
     }
 
-    if (session.state === GameState.Spinning && this._prevGameState !== GameState.Spinning) {
-      SoundManager.play('spin', 0.5);
+    if (s.session.state === GameState.Spinning && this._prevGameState !== GameState.Spinning) {
+      SoundManager.play('spin', GAME_CONFIG.SOUND_VOLUME_SPIN);
     }
 
     for (const re of this._reelStoppedQuery.entities) {
-      SoundManager.play('reel', 0.6);
+      SoundManager.play('reel', GAME_CONFIG.SOUND_VOLUME_REEL);
       this.world.removeTag(re, 'REEL_JUST_STOPPED');
     }
 
-    if (session.state === GameState.WinDisplay && this._prevGameState !== GameState.WinDisplay) {
-      if (this.world.hasComponent(sessionEntity, SpinResult)) {
-        const result = this.world.getComponent(sessionEntity, SpinResult);
+    if (s.session.state === GameState.WinDisplay && this._prevGameState !== GameState.WinDisplay) {
+      if (this.world.hasComponent(s.entity, SpinResult)) {
+        const result = this.world.getComponent(s.entity, SpinResult);
         if (result.totalWin > 0) {
-          SoundManager.play('win', 0.7);
+          SoundManager.play('win', GAME_CONFIG.SOUND_VOLUME_WIN);
         }
       }
     }
 
-    this._prevGameState = session.state;
+    this._prevGameState = s.session.state;
   }
 }

@@ -1,8 +1,9 @@
 import { System, World, Query } from '../ecs';
+import { getSession } from '../ecs/session';
 import { GameSession } from '../components/GameSession';
 import { TurboMode } from '../components/TurboMode';
+import { TurboToggleCommand } from '../components/InputCommands';
 import { GAME_CONFIG } from '../config/game';
-import { useGameStore } from '../store/gameStore';
 
 export class TurboSystem extends System {
   private _sessionQuery: Query;
@@ -13,16 +14,15 @@ export class TurboSystem extends System {
   }
 
   update(_dt: number) {
-    const store = useGameStore.getState();
+    const s = getSession(this.world, this._sessionQuery);
+    if (!s) return;
 
-    if (!store.turboToggle) return;
-    useGameStore.setState({ turboToggle: false });
+    const cmd = this.world.getComponent(s.entity, TurboToggleCommand);
+    if (!cmd.active) return;
+    cmd.active = false;
 
-    if (this._sessionQuery.entities.size === 0) return;
-    const sessionEntity = this._sessionQuery.entities.values().next().value!;
-
-    if (!this.world.hasComponent(sessionEntity, TurboMode)) return;
-    const turbo = this.world.getComponent(sessionEntity, TurboMode);
+    if (!this.world.hasComponent(s.entity, TurboMode)) return;
+    const turbo = this.world.getComponent(s.entity, TurboMode);
 
     turbo.active = !turbo.active;
     turbo.speedMultiplier = turbo.active ? GAME_CONFIG.TURBO_MULTIPLIER : 1;

@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import {
-  Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
-  Input, Button, VStack, Text, Box,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  Input,
+  Button,
+  VStack,
+  Text,
+  Box,
 } from '@chakra-ui/react';
 import { useGameStore } from '../store/gameStore';
 import { GameState } from '../types/game';

@@ -30,7 +30,13 @@ export function HUD() {
         <Text fontSize="xs" color="gray.500" fontFamily="'Orbitron', sans-serif">
           PLAYER
         </Text>
-        <Text fontSize="md" color="cyan.300" fontFamily="'Rajdhani', sans-serif" fontWeight="600" noOfLines={1}>
+        <Text
+          fontSize="md"
+          color="cyan.300"
+          fontFamily="'Rajdhani', sans-serif"
+          fontWeight="600"
+          noOfLines={1}
+        >
           {playerName}
         </Text>
       </Box>
@@ -61,7 +67,11 @@ export function HUD() {
           fontSize="xl"
           fontFamily="'Orbitron', sans-serif"
           fontWeight="700"
-          color={lastWin > 0 && (gameState === GameState.WinDisplay || gameState === GameState.Idle) ? 'yellow.300' : 'gray.600'}
+          color={
+            lastWin > 0 && (gameState === GameState.WinDisplay || gameState === GameState.Idle)
+              ? 'yellow.300'
+              : 'gray.600'
+          }
         >
           {lastWin > 0 ? lastWin.toLocaleString() : '\u2014'}
         </Text>

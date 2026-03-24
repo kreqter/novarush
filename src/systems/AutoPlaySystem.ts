@@ -1,8 +1,9 @@
 import { System, World, Query } from '../ecs';
+import { getSession } from '../ecs/session';
 import { GameSession } from '../components/GameSession';
 import { AutoPlay } from '../components/AutoPlay';
+import { SpinCommand, AutoPlayCommand } from '../components/InputCommands';
 import { GameState } from '../types/game';
-import { useGameStore } from '../store/gameStore';
 
 export class AutoPlaySystem extends System {
   private _sessionQuery: Query;
@@ -13,35 +14,34 @@ export class AutoPlaySystem extends System {
   }
 
   update(_dt: number) {
-    const store = useGameStore.getState();
-    if (this._sessionQuery.entities.size === 0) return;
-    const sessionEntity = this._sessionQuery.entities.values().next().value!;
-    const session = this.world.getComponent(sessionEntity, GameSession);
+    const s = getSession(this.world, this._sessionQuery);
+    if (!s) return;
 
-    if (!this.world.hasComponent(sessionEntity, AutoPlay)) return;
-    const autoPlay = this.world.getComponent(sessionEntity, AutoPlay);
+    if (!this.world.hasComponent(s.entity, AutoPlay)) return;
+    const autoPlay = this.world.getComponent(s.entity, AutoPlay);
+    const cmd = this.world.getComponent(s.entity, AutoPlayCommand);
 
-    if (store.autoPlayStart !== null) {
+    if (cmd.startCount !== null) {
       autoPlay.active = true;
-      autoPlay.remaining = store.autoPlayStart;
-      useGameStore.setState({ autoPlayStart: null });
+      autoPlay.remaining = cmd.startCount;
+      cmd.startCount = null;
     }
 
-    if (store.autoPlayStop) {
+    if (cmd.stopRequested) {
       autoPlay.active = false;
       autoPlay.remaining = 0;
-      useGameStore.setState({ autoPlayStop: false });
+      cmd.stopRequested = false;
     }
 
-    if (autoPlay.active && session.state === GameState.Idle) {
-      if (autoPlay.remaining <= 0 || session.balance < session.bet) {
+    if (autoPlay.active && s.session.state === GameState.Idle) {
+      if (autoPlay.remaining <= 0 || s.session.balance < s.session.bet) {
         autoPlay.active = false;
         autoPlay.remaining = 0;
         return;
       }
 
       autoPlay.remaining--;
-      useGameStore.setState({ spinRequested: true });
+      this.world.getComponent(s.entity, SpinCommand).active = true;
     }
   }
 }
